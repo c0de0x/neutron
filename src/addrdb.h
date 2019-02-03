@@ -43,23 +43,16 @@ public:
         nCreateTime = nCreateTimeIn;
     }
 
+    ADD_SERIALIZE_METHODS;
 
-    IMPLEMENT_SERIALIZE(
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+    unsigned int nSerSize = 0;
         READWRITE(this->nVersion);
         READWRITE(nCreateTime);
         READWRITE(nBanUntil);
         READWRITE(banReason);
-    )
-
-    // ADD_SERIALIZE_METHODS;
-
-    // template <typename Stream, typename Operation>
-    // inline void SerializationOp(Stream& s, Operation ser_action) {
-    //     READWRITE(this->nVersion);
-    //     READWRITE(nCreateTime);
-    //     READWRITE(nBanUntil);
-    //     READWRITE(banReason);
-    // }
+    }
 
     void SetNull()
     {

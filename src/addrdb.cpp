@@ -135,9 +135,9 @@ bool CAddrDB::Write(const CAddrMan& addr)
     // open temp output file, and associate with CAutoFile
     boost::filesystem::path pathTmp = GetDataDir() / tmpfn;
     FILE *file = fopen(pathTmp.string().c_str(), "wb");
-    CAutoFile fileout = CAutoFile(file, SER_DISK, CLIENT_VERSION);
-    if (!fileout)
-        return error("CAddrman::Write() : open failed");
+    CAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull())
+        return error("%s: Failed to open file %s", __func__, pathTmp.string());
 
     // Write and commit header, data
     try {
@@ -146,7 +146,7 @@ bool CAddrDB::Write(const CAddrMan& addr)
     catch (const std::exception& e) {
         return error("%s: Serialize or I/O error - %s", __func__, e.what());
     }
-    FileCommit(fileout);
+    FileCommit(fileout.Get());
     fileout.fclose();
 
     // replace existing peers.dat, if any, with new peers.dat.XXXX
@@ -160,9 +160,9 @@ bool CAddrDB::Read(CAddrMan& addr)
 {
     // open input file, and associate with CAutoFile
     FILE *file = fopen(pathAddr.string().c_str(), "rb");
-    CAutoFile filein = CAutoFile(file, SER_DISK, CLIENT_VERSION);
-    if (!filein)
-        return error("CAddrman::Read() : open failed");
+    CAutoFile filein(file, SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull())
+        return error("%s: Failed to open file %s", __func__, pathAddr.string());
 
     // use file size to size memory buffer
     uint64_t fileSize = boost::filesystem::file_size(pathAddr);
@@ -210,7 +210,7 @@ bool CAddrDB::Read(CAddrMan& addr, CDataStream& ssPeers)
     }
     catch (const std::exception& e) {
         // de-serialization has failed, ensure addrman is left in a clean state
-        // addr.Clear();
+        addr.Clear();
         return error("%s: Deserialize or I/O error - %s", __func__, e.what());
     }
 
