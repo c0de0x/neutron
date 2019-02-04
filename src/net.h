@@ -463,7 +463,7 @@ private:
     void ThreadOpenConnections();
     void ThreadOpenConnections2();
     // void ThreadMessageHandler();
-    // void AcceptConnection(const ListenSocket& hListenSocket);
+    void AcceptConnection(const SOCKET& hListenSocket);
     void ThreadSocketHandler();
     void ThreadSocketHandler2();
     void ThreadDNSAddressSeed();

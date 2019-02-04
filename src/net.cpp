@@ -766,13 +766,6 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
 
 
 
-
-
-// NTRN TODO - implement: void CConnman::AcceptConnection
-// NTRN TODO - implement: void CConnman::AcceptConnection
-// NTRN TODO - implement: void CConnman::AcceptConnection
-
-
 // requires LOCK(cs_vSend)
 void SocketSendData(CNode *pnode)
 {
@@ -813,6 +806,90 @@ void SocketSendData(CNode *pnode)
         assert(pnode->nSendSize == 0);
     }
     pnode->vSendMsg.erase(pnode->vSendMsg.begin(), it);
+}
+
+
+void CConnman::AcceptConnection(const SOCKET& hListenSocket) {
+    struct sockaddr_storage sockaddr;
+    socklen_t len = sizeof(sockaddr);
+    SOCKET hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
+    CAddress addr;
+    int nInbound = 0;
+
+    if (hSocket != INVALID_SOCKET)
+        if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
+            LogPrintf("Warning: Unknown socket family\n");
+
+    // NTRN TODO - implement: bool whitelisted
+    // NTRN TODO - implement: bool whitelisted
+    // NTRN TODO - implement: bool whitelisted
+
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+            if (pnode->fInbound)
+                nInbound++;
+    }
+
+    if (hSocket == INVALID_SOCKET)
+    {
+        int nErr = WSAGetLastError();
+        if (nErr != WSAEWOULDBLOCK)
+            LogPrintf("socket error accept failed: %d\n", nErr);
+        return;
+    }
+
+    // if (!fNetworkActive) {
+    //     LogPrintf("connection from %s dropped: not accepting new connections\n", addr.ToString());
+    //     CloseSocket(hSocket);
+    //     return;
+    // }
+
+    if (!IsSelectableSocket(hSocket))
+    {
+        LogPrintf("connection from %s dropped: non-selectable socket\n", addr.ToString());
+        CloseSocket(hSocket);
+        return;
+    }
+
+    // According to the internet TCP_NODELAY is not carried into accepted sockets
+    // on all platforms.  Set it again here just to be sure.
+    int set = 1;
+#ifdef WIN32
+    setsockopt(hSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&set, sizeof(int));
+#else
+    setsockopt(hSocket, IPPROTO_TCP, TCP_NODELAY, (void*)&set, sizeof(int));
+#endif
+
+    if (IsBanned(addr))
+    {
+        LogPrintf("connection from %s dropped (banned)\n", addr.ToString().c_str());
+        CloseSocket(hSocket);
+        return;
+    }
+
+    if (nInbound >= GetArg("-maxconnections", 125) - MAX_OUTBOUND_CONNECTIONS)
+    {
+        CloseSocket(hSocket);
+        return;
+    }
+
+    // // don't accept incoming connections until fully synced
+    // if(fMasternodeMode && !masternodeSync.IsSynced()) {
+    //     LogPrintf("AcceptConnection -- masternode is not synced yet, skipping inbound connection attempt\n");
+    //     CloseSocket(hSocket);
+    //     return;
+    // }
+
+    CNode* pnode = new CNode(hSocket, addr, "", true);
+    pnode->AddRef();
+
+    LogPrintf("accepted connection from %s\n", addr.ToString().c_str());
+
+    {
+        LOCK(cs_vNodes);
+        vNodes.push_back(pnode);
+    }
 }
 
 void CConnman::ThreadSocketHandler()
@@ -981,49 +1058,10 @@ void CConnman::ThreadSocketHandler2()
         // Accept new connections
         //
         BOOST_FOREACH(SOCKET hListenSocket, vhListenSocket)
-        if (hListenSocket != INVALID_SOCKET && FD_ISSET(hListenSocket, &fdsetRecv))
         {
-            struct sockaddr_storage sockaddr;
-            socklen_t len = sizeof(sockaddr);
-            SOCKET hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
-            CAddress addr;
-            int nInbound = 0;
-
-            if (hSocket != INVALID_SOCKET)
-                if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
-                    LogPrintf("Warning: Unknown socket family\n");
-
+            if (hListenSocket != INVALID_SOCKET && FD_ISSET(hListenSocket, &fdsetRecv))
             {
-                LOCK(cs_vNodes);
-                BOOST_FOREACH(CNode* pnode, vNodes)
-                    if (pnode->fInbound)
-                        nInbound++;
-            }
-
-            if (hSocket == INVALID_SOCKET)
-            {
-                int nErr = WSAGetLastError();
-                if (nErr != WSAEWOULDBLOCK)
-                    LogPrintf("socket error accept failed: %d\n", nErr);
-            }
-            else if (nInbound >= GetArg("-maxconnections", 125) - MAX_OUTBOUND_CONNECTIONS)
-            {
-                CloseSocket(hSocket);
-            }
-            else if (IsBanned(addr))
-            {
-                LogPrintf("connection from %s dropped (banned)\n", addr.ToString().c_str());
-                CloseSocket(hSocket);
-            }
-            else
-            {
-                LogPrintf("accepted connection %s\n", addr.ToString().c_str());
-                CNode* pnode = new CNode(hSocket, addr, "", true);
-                pnode->AddRef();
-                {
-                    LOCK(cs_vNodes);
-                    vNodes.push_back(pnode);
-                }
+                AcceptConnection(hListenSocket);
             }
         }
 
