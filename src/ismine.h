@@ -16,10 +16,9 @@ class CScript;
 /** IsMine() return codes */
 enum isminetype
 {
-    ISMINE_NO = 0,
-    ISMINE_WATCH_ONLY = 1,
-    ISMINE_SPENDABLE = 2,
-    ISMINE_ALL = ISMINE_WATCH_ONLY | ISMINE_SPENDABLE
+    MINE_NO = 0,
+    MINE_WATCH_ONLY = 1,
+    MINE_SPENDABLE = 2,
 };
 /** used for bitflags of isminetype */
 typedef uint8_t isminefilter;

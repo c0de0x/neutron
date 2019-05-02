@@ -14,6 +14,7 @@
 #include "uint256.h"
 #include "util.h"
 
+
 #include <openssl/ec.h> // for EC_KEY definition
 
 // secp160k1
