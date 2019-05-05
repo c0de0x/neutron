@@ -11,6 +11,8 @@
 #include "base58.h"
 #include "utiltime.h"
 #include "masternode.h"
+#include "script.h"
+#include "ismine.h"
 
 #include "univalue.h"
 
@@ -1648,6 +1650,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
     }
     return ret;
 }
+
 
 UniValue validatepubkey(const UniValue& params, bool fHelp)
 {

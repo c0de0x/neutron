@@ -23,6 +23,9 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 #    BOOST_INCLUDE_PATH, BOOST_LIB_PATH, BDB_INCLUDE_PATH,
 #    BDB_LIB_PATH, OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
 
+BITCOIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
+
+
 OBJECTS_DIR = build
 MOC_DIR = build
 UI_DIR = build
@@ -79,6 +82,10 @@ contains(BITCOIN_NEED_QT_PLUGINS, 1) {
     DEFINES += BITCOIN_NEED_QT_PLUGINS
     QTPLUGIN += qcncodecs qjpcodecs qtwcodecs qkrcodecs qtaccessiblewidgets
 }
+
+
+EXTRA_LIBRARIES += libbitcoin_zmq.a
+
 
 # LevelDB library
 INCLUDEPATH += src/leveldb/include src/leveldb/helpers
@@ -277,7 +284,13 @@ HEADERS += src/activemasternode.h \
     src/qt/transactionview.h \
     src/qt/walletmodel.h \
     src/rpc/register.h \
-    src/script/standard.h
+    src/script/standard.h \
+    src/zmq/zmqabstractnotifier.h \
+    src/zmq/zmqconfig.h\
+    src/zmq/zmqnotificationinterface.h \
+    src/zmq/zmqpublishnotifier.h \
+    src/validationinterface.h
+
 
 SOURCES += src/activemasternode.cpp \
     src/addrdb.cpp \
@@ -375,7 +388,18 @@ SOURCES += src/activemasternode.cpp \
     src/qt/transactionview.cpp \
     src/qt/walletmodel.cpp \
     src/rpc/rpcmasternode.cpp \
-    src/script/standard.cpp
+    src/script/standard.cpp \
+    src/validationinterface.cpp\
+
+
+LIBBITCOIN_ZMQ=libbitcoin_zmq.a
+
+libbitcoin_zmq_a_CPPFLAGS = $(BITCOIN_INCLUDES)
+libbitcoin_zmq_a_SOURCES = \
+  src/zmq/zmqabstractnotifier.cpp \
+  src/zmq/zmqnotificationinterface.cpp \
+  src/zmq/zmqpublishnotifier.cpp
+
 
 RESOURCES += \
     src/qt/bitcoin.qrc
@@ -404,6 +428,10 @@ HEADERS += src/qt/qrcodedialog.h
 SOURCES += src/qt/qrcodedialog.cpp
 FORMS += src/qt/forms/qrcodedialog.ui
 }
+
+
+bitcoind_LDADD += $(LIBBITCOIN_ZMQ) $(ZMQ_LIBS)
+
 
 CODECFORTR = UTF-8
 

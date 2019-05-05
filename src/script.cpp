@@ -11,12 +11,14 @@ using namespace std;
 using namespace boost;
 
 #include "script.h"
-#include "keystore.h"
+#include "ismine.h"
 #include "bignum.h"
 #include "key.h"
+#include "keystore.h"
 #include "main.h"
 #include "sync.h"
 #include "util.h"
+#include "wallet.h"
 
 
 
@@ -1509,6 +1511,18 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 
     return whichType != TX_NONSTANDARD;
 }
+
+class CKeyStoreIsMineVisitor : public boost::static_visitor<bool>
+{
+private:
+    const CKeyStore *keystore;
+public:
+    CKeyStoreIsMineVisitor(const CKeyStore *keystoreIn) : keystore(keystoreIn) { }
+    bool operator()(const CNoDestination &dest) const { return false; }
+    bool operator()(const CKeyID &keyID) const { return keystore->HaveKey(keyID); }
+    bool operator()(const CScriptID &scriptID) const { return keystore->HaveCScript(scriptID); }
+};
+
 
 
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)

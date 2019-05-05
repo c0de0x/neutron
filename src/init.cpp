@@ -28,14 +28,25 @@
 #include "spork.h"
 #include "darksend.h"
 #include "masternodeconfig.h"
+#include "zmq/zmqnotificationinterface.h"
+#include "validationinterface.h"
+
 
 #ifndef WIN32
 #include <signal.h>
 #endif
 
 
+
+
+
 using namespace std;
 using namespace boost;
+
+
+static CZMQNotificationInterface* pzmqNotificationInterface = NULL;
+
+
 
 #define PACKAGE_NAME "Neutron"
 
@@ -172,6 +183,14 @@ void PrepareShutdown()
     LogPrintf("Neutron exited\n\n");
 }
 
+#ifndef QT_GUI
+ (pzmqNotificationInterface) {
+        UnregisterValidationInterface(pzmqNotificationInterface);
+        pzmqNotificationInterface->Shutdown();
+        delete pzmqNotificationInterface;
+        pzmqNotificationInterface = NULL;
+    }
+#endif
 void Shutdown()
 {
     LogPrintf("%s: In progress...\n", __func__);
@@ -436,6 +455,12 @@ std::string HelpMessage()
     strUsage += "  -darksendrounds=<n>          " + _("Use N separate masternodes to anonymize funds  (2-8, default: 2)") + "\n";
     strUsage += "  -anonymizeNeutronamount=<n> " + _("Keep N Neutron anonymized (default: 0)") + "\n";
     strUsage += "  -liquidityprovider=<n>       " + _("Provide liquidity to Darksend by infrequently mixing coins on a continual basis (0-100, default: 0, 1=very frequent, high fees, 100=very infrequent, low fees)") + "\n";
+
+    strUsage += "\n" + _("ZeroMQ notification options:") + "\n";
+    strUsage += "  -zmqpubhashblock=<address>" + _("Enable publish hash block in <address>") + "\n";
+    strUsage += "  -zmqpubhashtransaction=<address>" + _("Enable publish hash transaction in <address>") + "\n";
+    strUsage += "  -zmqpubrawblock=<address>" + _("Enable publish raw block in <address>") + "\n";
+    strUsage += "  -zmqpubrawtransaction=<address>" + _("Enable publish raw transaction in <address>") + "\n";
 
     return strUsage;
 }
@@ -837,6 +862,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     BOOST_FOREACH(const std::string& strDest, mapMultiArgs["-seednode"])
         connman.AddOneShot(strDest);
+
+    pzmqNotificationInterface = CZMQNotificationInterface::CreateWithArguments(mapArgs);
+
+    if (pzmqNotificationInterface) {
+        pzmqNotificationInterface->Initialize();
+        RegisterValidationInterface(pzmqNotificationInterface);
+    }
+
 
     // ********************************************************* Step 7: load blockchain
 
