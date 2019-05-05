@@ -101,6 +101,7 @@ INPUT(
 ./build/walletmodel.o
 ./build/rpcmasternode.o
 ./build/standard.o
+./build/validationinterface.o
 ./build/qrcodedialog.o
 ./build/neutron-qt_plugin_import.o
 ./build/qrc_bitcoin.o

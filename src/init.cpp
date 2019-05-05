@@ -43,10 +43,9 @@
 using namespace std;
 using namespace boost;
 
-
+#if ENABLE_ZMQ
 static CZMQNotificationInterface* pzmqNotificationInterface = NULL;
-
-
+#endif
 
 #define PACKAGE_NAME "Neutron"
 
@@ -863,13 +862,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     BOOST_FOREACH(const std::string& strDest, mapMultiArgs["-seednode"])
         connman.AddOneShot(strDest);
 
+#if ENABLE_ZMQ
     pzmqNotificationInterface = CZMQNotificationInterface::CreateWithArguments(mapArgs);
 
     if (pzmqNotificationInterface) {
         pzmqNotificationInterface->Initialize();
         RegisterValidationInterface(pzmqNotificationInterface);
     }
-
+#endif
 
     // ********************************************************* Step 7: load blockchain
 

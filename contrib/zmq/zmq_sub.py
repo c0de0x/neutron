@@ -1,73 +1,37 @@
-#!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
-# Copyright (c) 2017 The Raven Core developers
-# Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#!/usr/bin/env python2
 
-"""
-    ZMQ example using python3's asyncio
-
-    Neutron should be started with the command line arguments:
-        neutrond -testnet -daemon \
-                -zmqpubhashblock=tcp://127.0.0.1:28766 \
-                -zmqpubrawtx=tcp://127.0.0.1:28766 \
-                -zmqpubhashtx=tcp://127.0.0.1:28766 \
-                -zmqpubhashblock=tcp://127.0.0.1:28766
-"""
-
-import sys
-import zmq
-import struct
+import array
 import binascii
-import codecs
+import zmq
 
-#  Socket to talk to server
-context = zmq.Context()
-socket = context.socket(zmq.SUB)
+port = 28332
 
-print("Getting Neutroncoin msgs")
-socket.connect("tcp://192.168.0.5:32001")
+zmqContext = zmq.Context()
+zmqSubSocket = zmqContext.socket(zmq.SUB)
+zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashblock")
+zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "hashtx")
+zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "rawblock")
+zmqSubSocket.setsockopt(zmq.SUBSCRIBE, "rawtx")
+zmqSubSocket.connect("tcp://127.0.0.1:%i" % port)
 
-socket.setsockopt_string(zmq.SUBSCRIBE, "hashtx")
-socket.setsockopt_string(zmq.SUBSCRIBE, "hashblock")
-socket.setsockopt_string(zmq.SUBSCRIBE, "rawblock")
-socket.setsockopt_string(zmq.SUBSCRIBE, "rawtx")
+try:
+    while True:
+        msg = zmqSubSocket.recv_multipart()
+        topic = str(msg[0])
+        body = msg[1]
 
-while True:
-	msg = socket.recv_multipart()
-	topic = msg[0]
-	body = msg[1]
-	sequence = "Unknown"
-	if len(msg[-1]) == 4:
-		msgSequence = struct.unpack('<I', msg[-1])[-1]
-		sequence = str(msgSequence)
-	if topic == b"hashblock":
-		print('- HASH BLOCK ('+sequence+') -')
-		print(binascii.hexlify(body))
-	elif topic == b"hashtx":
-		print('- HASH TX  ('+sequence+') -')
-		print(binascii.hexlify(body))
-	elif topic == b"rawblock":
-		print('- RAW BLOCK HEADER ('+sequence+') -')
-		print(binascii.hexlify(body[:80]))
-	elif topic == b"rawtx":
-		print('- RAW TX ('+sequence+') -')
-		astr = binascii.hexlify(body).decode("utf-8")
-		start = 0
-		pos = 0
-		while(pos != -1):
-			pos = astr.find('72766e', start)
-			if (pos > -1):
-				print("FOUND NTRN issuance at " + str(pos))
-				print("After NTRN: " + astr[pos+6:pos+8])
-				sizestr = astr[pos+8:pos+10]
-				print("sizestr: " + sizestr)
-				#print(str(astr[pos+8:pos+10]))
-				size = int(sizestr, 16)
-				print("Bytes: " + str(size))
-				print("Name: " + bytes.fromhex(astr[pos+10:pos+10+size*2]).decode('utf-8'))
-			pos = astr.find('72766e', start)
-			if (pos > -1):
-				print("FOUND NTRN something at " + str(pos))
-			start += pos+8
-			print(astr)
+        if topic == "hashblock":
+            print ("- HASH BLOCK -")
+            print binascii.hexlify(body)
+        elif topic == "hashtx":
+            print '- HASH TX -'
+            print binascii.hexlify(body)
+        elif topic == "rawblock":
+            print "- RAW BLOCK HEADER -"
+            print binascii.hexlify(body[:80])
+        elif topic == "rawtx":
+            print '- RAW TX -'
+            print binascii.hexlify(body)
+
+except KeyboardInterrupt:
+    zmqContext.destroy()
